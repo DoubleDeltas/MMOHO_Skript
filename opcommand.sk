@@ -1,0 +1,104 @@
+# MMOHO RPG 관리자 커맨드
+# 
+# Author: DoubleDeltas
+# Last Edited at 20210901 07:40
+#
+# required source: chest, party
+
+command /관리자 <text> <text>:
+	permission: skript.op
+	permission message: 이 명령어는 관리자만 실행할 수 있습니다!
+	trigger:
+		set {_restargs::*} to arg 2 split by " "
+		
+		if arg 1 is "챕터이동":
+			set {_leader} to {_restargs::1} parsed as player
+			if {_leader} is not set:
+				send "해당 플레이어는 오프라인이거나 없습니다!"
+				exit
+			set {_x} to {_restargs::2} parsed as number
+			set {_y} to {_restargs::3} parsed as number
+			set {_z} to {_restargs::4} parsed as number
+			set {_w} to {_restargs::5}
+			set {_loc} to location ({_x}, {_y}, {_z}) in world({_w})
+			if {_loc} is not set:
+				send "좌표 입력이 잘못되었습니다!"
+				send "올바른 입력: /관리자 챕터이동 <챕터장> &c<X> &a<Y> &9<Z> &5<월드> &r(시간) (커맨드)"
+				exit
+			if {_restargs::6} is set:
+				set {_t} to {_restargs::6} parsed as integer
+				if {_t} is not set:
+					send "시간 입력이 잘못되었습니다! 올바른 수를 입력해주세요! (초 단위)"
+					exit
+			else:
+				set {_t} to 0
+			if {_restargs::7} is set:
+				set {_cmd} to {_restargs::7}
+				if size of {_restargs::*} > 7:
+					loop integers between 8 and size of {_restargs::*}:
+						set {_cmd} to join {_cmd}, " ", and {_restargs::%loop-num%}
+				chapterMove(player, {_leader}, {_loc}, {_t}, {_cmd})
+			else:
+				chapterMove(player, {_leader}, {_loc}, {_t})
+			exit
+			
+		if arg 1 is "챕터시간":
+			set {_ti} to {_restargs::1} parsed as number
+			if {_ti} is not set:
+				send "시간 설정이 잘못되었습니다! 올바른 수를 입력해주세요! (분 단위, 소숫점 가능)"
+				exit
+			if {_ti} = 0:
+				resetChapterTime()
+				exit
+			if {_ti} = -1:
+				returnForced(player)
+				exit
+			setChapterTime(player, "%{_ti}% minute" parsed as timespan)
+			exit
+			
+		if arg 1 is "가방확장":
+			set {_tar} to {_restargs::1} parsed as offlineplayer
+			set {_n} to {_restargs::2} parsed as integer
+			if {_n} is not set:
+				send "확장할 줄 수를 올바르게 입력해주세요! (+정수/-정수/0)"
+				exit
+			if {indiv.%{_tar}%.chestLevel} is not set:
+				set {indiv.%{_tar}%.chestLevel} to 0
+			add {_n} to {indiv.%{_tar}%.chestLevel}
+			if {indiv.%{_tar}%.chestLevel} <= 0:
+				delete {indiv.%{_tar}%.chestLevel}
+				if {_restargs::3} is set:
+					send "%{_tar}%님의 가방이 삭제되었습니다!"
+				exit
+			exit if {_restargs::3} is not set
+			# msgs below:
+			if {_n} > 0:
+				send "%{_tar}%님의 가방이 %{_n}%줄 확장되었습니다! (%{indiv.%{_tar}%.chestLevel} - {_n}% -> %{indiv.%{_tar}%.chestLevel}%)"
+			else if {_n} < 0:
+				send "%{_tar}%님의 가방이 %0 - {_n}%줄 축소되었습니다! (%{indiv.%{_tar}%.chestLevel} - {_n}% -> %{indiv.%{_tar}%.chestLevel}%)"
+			else:
+				send "%{_tar}%님의 가방은 현재 %{indiv.%{_tar}%.chestLevel}%줄입니다."
+		
+		
+		if arg 1 is "후원자가방확장":
+			set {_tar} to {_restargs::1} parsed as offlineplayer
+			set {_n} to {_restargs::2} parsed as integer
+			if {_n} is not set:
+				send "확장할 줄 수를 올바르게 입력해주세요! (+정수/-정수/0)"
+				exit
+			if {indiv.%{_tar}%.chestLevelDonator} is not set:
+				set {indiv.%{_tar}%.chestLevelDonator} to 0
+			add {_n} to {indiv.%{_tar}%.chestLevelDonator}
+			if {indiv.%{_tar}%.chestLevelDonator} <= 0:
+				delete {indiv.%{_tar}%.chestLevelDonator}
+				if {_restargs::3} is set:
+					send "%{_tar}%님의 후원자 가방이 삭제되었습니다!"
+				exit
+			exit if {_restargs::3} is not set
+			if {_n} > 0:
+				send "%{_tar}%님의 후원자 가방이 %{_n}%줄 확장되었습니다! (%{indiv.%{_tar}%.chestLevelDonator} - {_n}% -> %{indiv.%{_tar}%.chestLevelDonator}%)"
+			else if {_n} < 0:
+				send "%{_tar}%님의 후원자 가방이 %0 -{_n}%줄 축소되었습니다! (%{indiv.%{_tar}%.chestLevelDonator} - {_n}% -> %{indiv.%{_tar}%.chestLevelDonator}%)"
+			else:
+				send "%{_tar}%님의 후원자 가방은 현재 %{indiv.%{_tar}%.chestLevelDonator}%줄입니다."
+		

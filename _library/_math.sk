@@ -1,0 +1,6 @@
+# Copyright 2020~2021. DoubleDeltas all rights reserved.
+# last edited: 20210829 13:59
+# branch from ICARUS\_basic
+
+function map(x: number, a1: number, b1: number, a2: number, b2: number) :: number: #두 점 (a1, b1), (a2, b2)를 지나는 선형사상
+	return ({_b2}-{_a2})/({_b1}-{_a1})*({_x}-{_a1})+{_a2}

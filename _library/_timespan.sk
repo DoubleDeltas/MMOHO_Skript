@@ -1,0 +1,95 @@
+# Copyright 2020~2021. DoubleDeltas all rights reserved.
+# last edited: 20210829 13:57
+# branch from ICARUS\_basic
+
+# required version: 2.2-dev31+
+# required library: _basic
+
+on skript load:
+	set {_wrd::*} to skript version split by "."
+	if {_wrd::2} parsed as integer >= 5:	#version >= 2.5.x
+		set {c.date.unix0} to unix date of 0
+	else:
+		set {c.date.unix0} to date(1970, 1, 1, 0, 0, 0, 0, -9*60, 0)
+		# in south korea and japan
+
+#---
+
+function timespanInDays(t0: timespan) :: integer:
+	set {_d} to {c.date.unix0}
+	add {_t0} to {_d}
+	return floor(unix timestamp of {_d} / 86400)
+	
+function timespanInHours(t0: timespan) :: integer:
+	set {_d} to {c.date.unix0}
+	add {_t0} to {_d}
+	return floor(unix timestamp of {_d} / 3600)
+	
+function timespanInMinutes(t0: timespan) :: integer:
+	set {_d} to {c.date.unix0}
+	add {_t0} to {_d}
+	return floor(unix timestamp of {_d} / 60)
+	
+function timespanInSeconds(t0: timespan) :: integer:
+	set {_d} to {c.date.unix0}
+	add {_t0} to {_d}
+	return floor(unix timestamp of {_d})
+
+function timespanInTicks(t0: timespan) :: integer:
+	set {_d} to {c.date.unix0}
+	add {_t0} to {_d}
+	return floor(unix timestamp of {_d} * 20)
+
+#---
+	
+function tAdd(t1: timespan, t2: timespan) :: timespan:
+	set {_res} to timespanInTicks({_t1})
+	add timespanInTicks({_t2}) to {_res}
+	return "%{_res}% ticks" parsed as timespan
+	
+function tSub(t1: timespan, t2: timespan) :: timespan:
+	set {_res} to timespanInTicks({_t1})
+	subtract timespanInTicks({_t2}) from {_res}
+	if {_res} < 0:
+		return 0 ticks
+	return "%{_res}% ticks" parsed as timespan
+	
+function tMul(t: timespan, x: number) :: timespan:
+	return "%timespanInTicks({_t}) * {_x}% ticks" parsed as timespan
+	
+function tDiv(t: timespan, x: number) :: timespan:
+	return tMul({_t}, 1/{_x})
+
+function tDivt(t1: timespan, t2: timespan) :: integer:
+	set {_t1} to timespanInTicks({_t1})
+	set {_t2} to timespanInTicks({_t2})
+	return floor({_t1} / {_t2})
+	
+function tModt(t1: timespan, t2: timespan) :: timespan:
+	set {_t1} to timespanInTicks({_t1})
+	set {_t2} to timespanInTicks({_t2})
+	return "%mod({_t1}, {_t2})% ticks" parsed as timespan
+
+#---
+	
+function timespanToTime(t: timespan) :: time:
+	set {_tt} to timespanInTicks({_t})
+	set {_tt} to mod({_tt}, 24000)
+	
+	set {_h} to floor({_tt} / 1000) + 6
+	if {_h} > 24:
+		subtract 24 from {_h}
+	set {_m} to floor(map(mod({_tt}, 1000), 0, 1000, 0, 60))
+	
+	if {_m} < 10:
+		return "%{_h}%:0%{_m}%" parsed as time
+	return "%{_h}%:%{_m}%" parsed as time
+	
+#---
+
+function tIsInRange(x: timespan, a: timespan, b: timespan) :: boolean:
+	if {_x} < {_a}:
+		return false
+	if {_b} < {_x}:
+		return false
+	return true

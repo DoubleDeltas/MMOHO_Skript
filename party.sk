@@ -1,0 +1,198 @@
+# MMOHO RPG 챕터 전용 파티 시스템
+# 
+# Author: DoubleDeltas
+# Last Edited at 20210909 16:04
+#
+# required library: _timespan
+
+options:
+	prefix: &6[&eMMOHO&6]&f
+	partyMemberLimit: 3
+	lobbyLocation: location (985, 85, -1091) in world "skc"
+
+#---함수
+	
+function sendInviteMember(p: player, mem: player):
+	if {_mem} is offline:
+		send "{@prefix} %{_mem}%님은 현재 오프라인이거나 없습니다!" to {_p}
+		exit
+	if {_p} is {_mem}:
+		send "{@prefix} 자기 자신은 초대할 수 없습니다!" to {_p}
+		exit
+	if {party.%{_p}%.members::*} contains {_mem}:
+		send "{@prefix} 해당 명단의 플레이어는 이미 존재합니다!" to {_p}
+		exit
+	if size of {party.%{_p}%.members::*} > {@partyMemberLimit}:
+		send "{@prefix} 명단이 꽉 찼습니다! &c/챕터원 초기화 &f로 명단을 리셋 (최대 4인)" to {_p}
+		exit
+	if {temp.%{_mem}%.waitingParty} is {_p}:
+		send "{@prefix} 이미 멤버원 초대를 보냈습니다! 상대가 수락할 때까지 기다려주세요!" to {_p}
+		exit
+	set {temp.%{_mem}%.waitingParty} to {_p}
+	send "{@prefix} &f%{_mem}%님께 챕터원 초대 신청을 보냈습니다!" to {_p}
+	send "{@prefix} %{_p}%님이 당신을 챕터원으로 초대했습니다! &a/수락 &f또는 &c/거절&f" to {_mem}
+	wait 60 seconds
+	if {temp.%{_mem}%.waitingParty} is {_p}:
+		delete {temp.%{_mem}%.waitingParty}
+		send "{@prefix} 60초 간 수락하지 않아 초대가 취소되었습니다." to {_mem}
+
+function acceptInviteMember(p: player):
+	if {temp.%{_p}%.waitingParty} is not set:
+		send "{@prefix} 챕터원 초대가 없습니다!" to {_p}
+		exit
+	set {_inviter} to {temp.%{_p}%.waitingParty}
+	add {_p} to {party.%{_inviter}%.members::*}
+	delete {temp.%{_p}%.waitingParty}
+	send "{@prefix} 당신은 이제 %{_inviter}%님의 챕터원입니다." to {_p}
+	send "{@prefix} &f플레이어 &a%{_p}%&f을 당신의 챕터원으로 등록했습니다!" to {_inviter}
+	
+
+function declineInviteMember(p: player):
+	if {temp.%{_p}%.waitingParty} is not set:
+		send "{@prefix} 챕터원 초대가 없습니다!" to {_p}
+		exit
+	set {_prev} to {temp.%{_p}%.waitingParty}
+	delete {temp.%{_p}%.waitingParty}
+	send "{@prefix} %{_prev}%님의 챕터원 초대를 거절했습니다." to {_p}
+	send "{@prefix} %{_p}%님이 당신이 보낸 초대를 거절하셨습니다." to {_prev}
+
+
+function showMembers(p: player):
+	send "{@prefix} &e==========챕터원 명단==========" to {_p}
+	send "{@prefix} &6- 챕터장 &a%{_p}%" to {_p}
+	loop {party.%{_p}%.members::*}:
+		if loop-value is {_p}:
+			continue
+		send "{@prefix} &6- &f%loop-value%" to {_p}
+	send "{@prefix} &e============================" to {_p}
+	
+
+function clearMembers(p: player):
+	delete {party.%{_p}%.members::*}
+	send "{@prefix} &f명단을 초기화했습니다! &a/챕터원 <이름>&f으로 명단 등록 (최대 4인)" to {_p}
+	
+
+function chapterMove(p: player, tar: player, l: location, ti: integer, cmd: text = ""):
+	if {temp.chapterMoving} is set:
+		send "{@prefix} 이미 이동중입니다!" to {_p}
+		exit
+	if {party.%{temp.chapterMovedLeader}%.members::*} doesn't contain {_tar}:
+		if {sys.chapterEndTime} is set:
+			send "{@prefix} 챕터에 도전중인 모호가들이 아직 귀환하지 않았습니다! 잠시 기다려주세요!" to {_p}
+			exit
+	set {temp.chapterMovedLeader} to {_tar}
+	set {temp.chapterMoving} to true
+	if {_ti} != 0:
+		broadcast "{@prefix} &f준비하세요!!"
+		loop {_ti} times:
+			broadcast "{@prefix} &f좌표 이동까지: &b&l%{_ti} - loop-num + 1%&f초"
+			wait 1 second
+	if {party.%{_tar}%.members::*} is set:
+		loop {party.%{_tar}%.members::*}:
+			set {temp.%loop-value%.returnLocation} to loop-value's location
+			teleport loop-value to {_l}
+	else:
+		set {temp.%{_tar}%.returnLocation} to {_p}'s location
+		teleport {_tar} to {_l}
+	if {_cmd} is not "":
+		if {_tar} is not op:
+			op {_tar}
+			execute command {_cmd} by {_tar}
+			deop {_tar}
+		else:
+			execute command {_cmd} by {_tar}
+	delete {temp.chapterMoving}
+	
+
+function setChapterTime(p: player, t: timespan):
+	set {sys.chapterEndTime} to {_t} later
+	send "{@prefix} 챕터 시간을 %timespanToKorean({_t})% 후로 설정했습니다!" to {_p}
+
+	
+function resetChapterTime():
+	delete {sys.chapterEndTime}
+	broadcast "&0"
+	broadcast "{@prefix} &f모호가들이 귀환했습니다! &a이제 챕터에 도전할 수 있습니다!"
+	broadcast "{@prefix} &7도움말: &a/챕터"
+	broadcast "&0"	
+	
+	
+function returnForced(p: player):
+	set {_tar} to {temp.chapterMovedLeader}
+	if {party.%{_tar}%.members::*} is set:
+		loop {party.%{_tar}%.members::*}:
+			teleport loop-value to {temp.%loop-value%.returnLocation}
+	else:
+		teleport {_tar} to {temp.%{_tar}%.returnLocation}
+	resetChapterTime()
+
+#---- 이벤트
+
+every 1 minute:
+	exit if {sys.chapterEndTime} is not set
+	if {sys.chapterEndTime} < now:
+		delete {sys.chapterEndTime}
+		exit
+	set {_diff} to difference between {sys.chapterEndTime} and now
+	if {_diff} < 3 minute:
+		exit if {temp.waitingLast3Minute} is true
+		set {temp.waitingLast3Minute} to true
+		waitLast3Minute({_diff})
+		exit
+	set {_mod10} to tModt({_diff}, 10 minute)	# timespan
+	if tIsInRange({_mod10}, 0 minutes, 1 minutes) is true:
+		wait {_mod10}
+		broadcast "{@prefix} 챕터시간이 %tDivt({_diff}, 10 minute)%0분 남았습니다!"
+		exit
+
+		
+function waitLast3Minute(t: timespan):
+	if {_t} >= 3 minute:
+		wait tSub({_t}, 3 minutes)
+		broadcast "{@prefix} 챕터시간이 3분 남았습니다!"
+		set {_t} to 3 minutes
+	if {_t} >= 2 minute:
+		wait tSub({_t}, 2 minutes)
+		broadcast "{@prefix} 챕터시간이 2분 남았습니다!"
+		set {_t} to 2 minutes
+	if {_t} >= 1 minute:
+		wait tSub({_t}, 1 minutes)
+		broadcast "{@prefix} 챕터시간이 1분 남았습니다!"
+		set {_t} to 1 minute
+	wait {_t}
+	resetChapterTime()
+	delete {temp.waitingLast3Minute}
+	
+	
+#---- 커맨드
+
+command /챕터원 <text>:
+	usage:{@prefix} &c도움말: /챕터원 <이름>
+	executable by: players
+	trigger:
+		if arg 1 is "목록":
+			showMembers(player)
+			exit
+		if arg 1 is "초기화":
+			clearMembers(player)
+			exit
+		set {_tar} to arg 1 parsed as player
+		if {_tar} is set:
+			sendInviteMember(player, {_tar})
+			exit
+		else:
+			send "{@prefix} %arg 1%님은 현재 오프라인이거나 없습니다!"
+
+command /수락:
+	aliases: /tnfkr, /accept
+	executable by: players
+	trigger:
+		acceptInviteMember(player)
+		
+command /거절:
+	aliases: /rjwjf, /reject, /decline
+	executable by: players
+	trigger:
+		declineInviteMember(player)
+		
+# 관리자 명령어는 opcommand.sk에서...

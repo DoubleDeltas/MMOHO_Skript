@@ -1,0 +1,284 @@
+# MMOHO RPG 가상창고 스크립트 GUI
+#
+# Author: DoubleDeltas
+# Last Edited at 20210829 17:55
+
+options:
+	prefixHub: &0가방
+	prefixNormal: &0&l가방&r
+	prefixDonator: &5&l후원자 가방&r
+
+# --- 사운드 함수
+
+function playWhenClose(p: player):
+	wait 1 tick
+	if name of {_p}'s current inventory is "Crafting":
+		snd_backpackClose({_p})
+	
+	
+# --- getPage: 가방 인벤토리 이름에서 페이지 수를 parse하는 함수
+
+function getPage(s: text) :: integer:
+	set {_spl::*} to {_s} split by " | "
+	set {_wrd::*} to {_spl::2} split by " "
+	return {_wrd::2} parsed as integer
+	
+# --- 메인 화면
+
+function gui_hub(p: player):
+	open chest inventory named "{@prefixHub}" with 3 rows to {_p}
+	snd_backpackOpen({_p})
+	set slot (integers between 0 and 35) of {_p}'s current inventory to {gui::blank}
+	set slot 11 of {_p}'s current inventory to {gui::normal}
+	set slot 15 of {_p}'s current inventory to {gui::donator}
+
+	
+on inventory click:
+	exit if name of event-inventory is not "{@prefixHub}"
+	cancel event
+	if event-item is {gui::normal}:
+		gui_gotoChestNormal(player)
+	if event-item is {gui::donator}:
+		gui_gotoChestDonator(player)
+		
+on inventory close:
+	exit if name of event-inventory is not "{@prefixHub}"
+	snd_backpackClose(player)
+
+#--- Wrapper 함수
+	
+function gui_gotoChestNormal(p: player):
+	if {indiv.%{_p}%.chestLevel} <= 5:
+		gui_chestNormalSimple({_p})
+	else:
+		gui_chestNormalComplex({_p}, 1)
+
+		
+function gui_gotoChestDonator(p: player):
+	if {indiv.%{_p}%.chestLevelDonator} <= 5:
+		gui_chestDonatorSimple({_p})
+	else:
+		gui_chestDonatorComplex({_p}, 1)
+	
+#--- 일반 상자 단순
+	
+function gui_chestNormalSimple(p: player):
+	set {_rows} to {indiv.%{_p}%.chestLevel}					# 1-base, start from 1 / 1 to 5
+	open chest inventory named "{@prefixNormal}" with {_rows} rows to {_p}
+	snd_backpackOpen({_p})
+	loop integers between 1 to 9 * {_rows}:						# 1-base
+		if {indiv.%{_p}%.chestItem::%loop-num%} is not set:
+			set slot (loop-num - 1) of {_p}'s current inventory to air
+		else:
+			set slot (loop-num - 1) of {_p}'s current inventory to {indiv.%{_p}%.chestItem::%loop-num%}
+
+
+on inventory close:
+	exit if name of event-inventory is not "{@prefixNormal}"
+	snd_backpackClose(player)
+	loop integers between 0 and 4:
+		if slot (loop-num * 9) of event-inventory is not set:
+			continue
+		loop integers between 0 and 8:
+			set {_num} to loop-num-1 * 9 + loop-num-2 + 1	# 1-base
+			if slot ({_num}-1) of event-inventory is air:
+				delete {indiv.%player%.chestItem::%{_num}%}
+			else:
+				set {indiv.%player%.chestItem::%{_num}%} to slot ({_num}-1) of event-inventory
+	
+#--- 일반 상자 복잡
+		
+function gui_chestNormalComplex(p: player, page: integer):
+	if name of {_p}'s current inventory doesn't contain "{@prefixNormal}" and "| page":
+		open chest inventory named "{@prefixNormal} | page %{_page}%" with 6 rows to {_p}
+		snd_backpackOpen({_p})
+	else:
+		set name of {_p}'s current inventory to "{@prefixNormal} | page %{_page}%"
+	loop integers between 0 and 4:
+		set {_rownum} to ({_page} - 1) * 5 + loop-num			# 0-base: 0 1 2 3 4 / 5 6 ...
+		if {_rownum} <= {indiv.%{_p}%.chestLevel} - 1:
+			loop integers between 0 and 8:
+				set {_num} to {_rownum} * 9 + loop-num-2 + 1	# 1-base
+				if {indiv.%{_p}%.chestItem::%{_num}%} is set:
+					set slot (loop-num-1 * 9 + loop-num-2) of {_p}'s current inventory to {indiv.%{_p}%.chestItem::%{_num}%}
+				else:
+					set slot (loop-num-1 * 9 + loop-num-2) of {_p}'s current inventory to air
+		else:
+			# fill with blank icon
+			set slot (integers between loop-num * 9 and loop-num * 9 + 8) of {_p}'s current inventory to {gui::blank}
+	set slot (integers between 46 and 52) of {_p}'s current inventory to {gui::blank2}
+	set slot 45 of {_p}'s current inventory to {gui::prev}
+	set slot 53 of {_p}'s current inventory to {gui::next}
+
+	
+on inventory close:
+	exit if name of event-inventory doesn't contain "{@prefixNormal}" and "| page"
+	set {_page} to getPage(name of event-inventory)
+	loop integers between 0 to 44:
+		set {_num} to ({_page}-1) * 45 + loop-num + 1				# 1-base
+		if slot (loop-num) of player's current inventory is air:
+			delete {indiv.%player%.chestItem::%{_num}%}
+			continue
+		continue if slot (loop-num) of player's current inventory is {gui::blank}
+		set {indiv.%player%.chestItem::%{_num}%} to slot loop-num of event-inventory
+	playWhenClose(player)
+
+on inventory click:
+	exit if name of event-inventory doesn't contain "{@prefixNormal}" and "| page"
+	set {_page} to getPage(name of event-inventory)
+	if index of event-slot is between 45 and 54:				# 6th row
+		cancel event
+	if event-item is {gui::blank}:
+		cancel event
+	if event-item is {gui::prev}:
+		if {_page} != 1:
+			gui_chestNormalComplex(player, floor({_page} - 1))
+			snd_backpackPage(player)
+	if event-item is {gui::next}:
+		if {_page} != ceil({indiv.%player%.chestLevel} / 5):
+			gui_chestNormalComplex(player, floor({_page} + 1))
+			snd_backpackPage(player)
+
+#--- 후원자 상자 단순
+
+function gui_chestDonatorSimple(p: player):
+	set {_rows} to {indiv.%{_p}%.chestLevelDonator}
+	open chest inventory named "{@prefixDonator}" with {_rows} rows to {_p}
+	snd_backpackOpen({_p})
+	loop integers between 1 to 9 * {_rows}:
+		if {indiv.%{_p}%.chestItemDonator::%loop-num%} is not set:
+			continue
+		set slot (loop-num - 1) of {_p}'s current inventory to {indiv.%{_p}%.chestItemDonator::%loop-num%}
+
+
+on inventory close:
+	exit if name of event-inventory is not "{@prefixDonator}"
+	snd_backpackClose(player)
+	loop integers between 0 and 4:
+		if slot (loop-num * 9) of event-inventory is not set:
+			exit
+		loop integers between 0 and 8:
+			set {_num} to loop-num-1 * 9 + loop-num-2 + 1	# 1-base
+			if slot ({_num}-1) of event-inventory is air:
+				delete {indiv.%player%.chestItemDonator::%{_num}%}
+			else:
+				set {indiv.%player%.chestItemDonator::%{_num}%} to slot ({_num}-1) of event-inventory
+		
+#--- 후원자 상자 복잡
+		
+function gui_chestDonatorComplex(p: player, page: integer):
+	if name of {_p}'s current inventory doesn't contain "{@prefixDonator}" and "| page":
+		open chest inventory named "{@prefixDonator} | page %{_page}%" with 6 rows to {_p}	
+		snd_backpackOpen({_p})
+	else:
+		set name of {_p}'s current inventory to "{@prefixDonator} | page %{_page}%"	
+	loop integers between 0 and 4:
+		set {_rownum} to ({_page} - 1) * 5 + loop-num			# 0-base, start from 0 / 0 1 2 3 4 / 5 6 ...
+		if {_rownum} <= {indiv.%{_p}%.chestLevelDonator} - 1:
+			loop integers between 0 and 8:
+				set {_num} to {_rownum} * 9 + loop-num-2 + 1	# 1-base
+				if {indiv.%{_p}%.chestItemDonator::%{_num}%} is set:
+					set slot (loop-num-1 * 9 + loop-num-2) of {_p}'s current inventory to {indiv.%{_p}%.chestItemDonator::%{_num}%}
+				else:
+					set slot (loop-num-1 * 9 + loop-num-2) of {_p}'s current inventory to air
+		else:
+			# fill with blank icon
+			set slot (integers between loop-num * 9 and loop-num * 9 + 8) of {_p}'s current inventory to {gui::blank3}
+	set slot (integers between 46 and 52) of {_p}'s current inventory to {gui::blank4}
+	set slot 45 of {_p}'s current inventory to {gui::prev}
+	set slot 53 of {_p}'s current inventory to {gui::next}
+
+on inventory close:
+	exit if name of event-inventory doesn't contain "{@prefixDonator}" and "| page"
+	set {_page} to getPage(name of event-inventory)
+	loop integers between 0 to 44:
+		set {_num} to ({_page}-1) * 45 + loop-num + 1				# 1-base
+		if slot (loop-num) of player's current inventory is air:
+			delete {indiv.%player%.chestItemDonator::%{_num}%}
+			continue
+		continue if slot (loop-num) of player's current inventory is {gui::blank3}
+		set {indiv.%player%.chestItemDonator::%{_num}%} to slot loop-num of event-inventory
+	playWhenClose(player)
+		
+
+on inventory click:
+	exit if name of event-inventory doesn't contain "{@prefixDonator}" and "| page"
+	set {_page} to getPage(name of event-inventory)
+	if index of event-slot is between 45 and 54:				# 6th row
+		cancel event
+	if event-item is {gui::blank3}:
+		cancel event
+	if event-item is {gui::prev}:
+		if {_page} != 1:
+			gui_chestDonatorComplex(player, floor({_page} - 1))
+			snd_backpackPage(player)
+	if event-item is {gui::next}:
+		if {_page} != ceil({indiv.%player%.chestLevelDonator} / 5):
+			gui_chestDonatorComplex(player, floor({_page} + 1))
+			snd_backpackPage(player)
+	
+#--- 명령어
+	
+command /가방:
+	aliases: /rkqkd, /backpack
+	cooldown: 1 second
+	cooldown message: &c잠시 후 다시 시도해주세요!
+	trigger:
+		if {indiv.%player%.chestLevel} and {indiv.%player%.chestLevelDonator} are not set:
+			send "&c가방이 없습니다!"
+		else if {indiv.%player%.chestLevelDonator} is not set:
+			gui_gotoChestNormal(player)
+		else if {indiv.%player%.chestLevel} is not set:
+			gui_gotoChestDonator(player)
+		else:
+			gui_hub(player)
+
+			
+
+# 이하 폐기됨 deprecated below ---
+
+command /가방설정 <offlineplayer> <integer> [<text>]:
+	permission: skript.op
+	permission message: 이 명령어는 사용할 수 없습니다!
+	trigger:
+		if {indiv.%arg 1%.chestLevel} is not set:
+			set {indiv.%arg 1%.chestLevel} to 0
+		add arg 2 to {indiv.%arg 1%.chestLevel}
+		if {indiv.%arg 1%.chestLevel} <= 0:
+			delete {indiv.%arg 1%.chestLevel}
+			if arg 3 is set:
+				send "%arg 1%님의 가방이 삭제되었습니다!"
+			exit
+		exit if arg 3 is not set
+		# msgs below:
+		send "&7이 명령어는 곧 폐기 예정입니다. '/관리자 가방확장'을 사용해주세요."
+		if arg 2 > 0:
+			send "%arg 1%님의 가방이 %arg 2%줄 확장되었습니다! (%{indiv.%arg 1%.chestLevel} - arg 2% -> %{indiv.%arg 1%.chestLevel}%)"
+		else if arg 2 < 0:
+			send "%arg 1%님의 가방이 %0 - arg 2%줄 축소되었습니다! (%{indiv.%arg 1%.chestLevel} - arg 2% -> %{indiv.%arg 1%.chestLevel}%)"
+		else:
+			send "%arg 1%님의 가방은 현재 %{indiv.%arg 1%.chestLevel}%줄입니다."
+			
+	
+command /가방설정후원자 <offlineplayer> <integer> [<text>]:
+	permission: skript.op
+	permission message: 이 명령어는 사용할 수 없습니다!
+	trigger:
+		if {indiv.%arg 1%.chestLevelDonator} is not set:
+			set {indiv.%arg 1%.chestLevelDonator} to 0
+		add arg 2 to {indiv.%arg 1%.chestLevelDonator}
+		if {indiv.%arg 1%.chestLevelDonator} <= 0:
+			delete {indiv.%arg 1%.chestLevelDonator}
+			if arg 3 is set:
+				send "%arg 1%님의 후원자 가방이 삭제되었습니다!"
+			exit
+		exit if arg 3 is not set
+		# msgs below:
+		send "&7이 명령어는 곧 폐기 예정입니다. '/관리자 후원자가방확장'을 사용해주세요."
+		if arg 2 > 0:
+			send "%arg 1%님의 후원자 가방이 %arg 2%줄 확장되었습니다! (%{indiv.%arg 1%.chestLevelDonator} - arg 2% -> %{indiv.%arg 1%.chestLevelDonator}%)"
+		else if arg 2 < 0:
+			send "%arg 1%님의 후원자 가방이 %0 -arg 2%줄 축소되었습니다! (%{indiv.%arg 1%.chestLevelDonator} - arg 2% -> %{indiv.%arg 1%.chestLevelDonator}%)"
+		else:
+			send "%arg 1%님의 후원자 가방은 현재 %{indiv.%arg 1%.chestLevelDonator}%줄입니다."
+		

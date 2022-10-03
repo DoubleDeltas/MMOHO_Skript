@@ -1,0 +1,33 @@
+# MMOHO RPG 커맨드 자동 완성
+# 
+# Author: DoubleDeltas
+# Last Edited at 20210829 15:43
+#
+# required addons: SkBee (+1.7.0)
+
+on skbee tab complete for "챕터원":
+	set tab completions for position 1 to "목록" and "초기화"
+	add all players to tab completions for position 1
+		
+on skbee tab complete for "관리자":
+	set tab completions for position 1 to "챕터이동", "챕터시간", "가방확장" and "후원자가방확장"
+	
+	if tab arg 1 is "챕터이동":
+		set tab completions for position 2 to all players
+		set tab completions for position 3 to x-pos of targeted block
+		set tab completions for position 4 to y-pos of targeted block
+		set tab completions for position 5 to z-pos of targeted block
+		set tab completions for position 6 to all worlds
+		set tab completions for position 7 to "준비 시간(초)"
+		set tab completions for position 8 to "명령어"
+		
+	else if tab arg 1 is "챕터시간":
+		set tab completions for position 2 to "시간(분)"
+		
+	else if tab arg 1 is "가방확장":
+		set tab completions for position 2 to "확장(+)/축소(-)할 줄 수"
+		set tab completions for position 3 to "디버그?"
+		
+	else if tab arg 1 is "후원자가방확장":
+		set tab completions for position 2 to "확장(+)/축소(-)할 줄 수"
+		set tab completions for position 3 to "디버그?"

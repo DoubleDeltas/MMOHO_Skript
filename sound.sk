@@ -1,0 +1,26 @@
+# MMOHO RPG 사운드 (Skript)
+# 
+# Author: DoubleDeltas
+# Last Edited at 20210829 15:43
+
+function snd_backpackOpen(p: player):
+	loop 2 times:
+		play sound "minecraft:item.armor.equip_iron" in player category with volume 10 and pitch 0.5 to {_p}
+	loop 3 times:
+		play sound "minecraft:item.armor.equip_leather" in player category with volume 10 and pitch 0.5 to {_p}
+	loop 2 times:
+		play sound "minecraft:block.snow.break" in player category with volume 10 and pitch 0.5 to {_p}
+		
+	
+function snd_backpackClose(p: player):
+	loop 3 times:
+		play sound "minecraft:item.armor.equip_chain" in player category with volume 10 and pitch 2 to {_p}
+	loop 4 times:
+		play sound "minecraft:block.grass.hit" in player category with volume 10 and pitch 0.5 to {_p}
+	loop 3 times:
+		play sound "minecraft:item.armor.equip_generic" in player category with volume 10 and pitch 0.5 to {_p}
+	wait 8 ticks
+	play sound "minecraft:entity.leash_knot.place" in player category with volume 10 and pitch 1.2 to {_p}
+	
+function snd_backpackPage(p: player):
+	play sound "minecraft:ui.loom.select_pattern" in player category with volume 1 and pitch 1 to {_p}

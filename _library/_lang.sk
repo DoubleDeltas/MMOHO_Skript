@@ -1,0 +1,12 @@
+# Copyright 2020~2021. DoubleDeltas all rights reserved.
+# last edited: 20210829 15:28
+# branch from ICARUS\_basic
+
+function timespanToKorean(t: timespan) :: string:
+	set {_str} to "%{_t}%"
+	replace " and" in {_str} with ""
+	replace " days" and " day" in {_str} with "일"
+	replace " hours" and " hour" in {_str} with "시간"
+	replace " minutes" and " minute" in {_str} with "분"
+	replace " seconds" and " second" in {_str} with "초"
+	return {_str}

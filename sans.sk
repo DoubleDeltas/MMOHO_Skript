@@ -1,0 +1,9 @@
+command /sans:
+	trigger:
+		play sound "entity.experience_orb.pickup" with pitch 0.50 to player
+		wait 3 ticks
+		play sound "entity.experience_orb.pickup" with pitch 0.50 to player
+		wait 3 ticks
+		play sound "entity.experience_orb.pickup" with pitch 1.00 to player
+		wait 6 ticks
+		play sound "entity.experience_orb.pickup" with pitch 0.75 to player
